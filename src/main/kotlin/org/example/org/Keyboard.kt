@@ -5,8 +5,12 @@ class Keyboard {
 
     fun readHexInput(): UByte {
         print("INPUT REQUIRED: ")
-        val line = scanner.nextLine()?.trim() ?: ""
-        if (line.isEmpty()) return 0u
-        return line.toUByte(16)
+        val line = scanner.nextLine()?.trim()?.take(2) ?: ""
+        return try {
+            line.toUByte(16)
+        } catch (e: NumberFormatException) {
+            println("Invalid hex input. Defaulting to 0.")
+            0u
+        }
     }
 }

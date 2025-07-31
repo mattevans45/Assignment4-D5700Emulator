@@ -2,17 +2,19 @@ package org.example
 
 object InstructionFactory {
     fun createInstruction(instructionWord: UShort): Instruction {
-        val opcode = (instructionWord.toInt() shr 12) and 0xF
+        val instruction = instructionWord.toInt()
 
-        // Extract common operands
-        val rX = (instructionWord.toInt() shr 8) and 0xF
-        val rY = (instructionWord.toInt() shr 4) and 0xF
-        val rZ = instructionWord.toInt() and 0xF
-        val bb = (instructionWord.toInt() and 0xFF).toUByte()
-        val aaa = (instructionWord.toInt() and 0xFFF).toUShort()
+        val opcode = (instruction shr 12) and 0xF
+        val rX = (instruction shr 8) and 0xF
+        val rY = (instruction shr 4) and 0xF
+        val rZ = instruction and 0xF
+        val aaa = (instruction and 0xFFF).toUShort()
 
         return when (opcode) {
-            0x0 -> StoreInstruction(rX, bb)
+            0x0 -> {
+                val bb = (instruction and 0xFF).toUByte()
+                StoreInstruction(rX, bb)
+            }
             0x1 -> AddInstruction(rX, rY, rZ)
             0x2 -> SubInstruction(rX, rY, rZ)
             0x3 -> ReadInstruction(rX)
@@ -23,7 +25,10 @@ object InstructionFactory {
             0x8 -> SkipEqualInstruction(rX, rY)
             0x9 -> SkipNotEqualInstruction(rX, rY)
             0xA -> SetAInstruction(aaa)
-            0xB -> SetTInstruction(bb)
+            0xB -> {
+                val bb = ((instruction shr 4) and 0xFF).toUByte()
+                SetTInstruction(bb)
+            }
             0xC -> ReadTInstruction(rX)
             0xD -> ConvertToBase10Instruction(rX)
             0xE -> ConvertByteToAsciiInstruction(rX, rY)

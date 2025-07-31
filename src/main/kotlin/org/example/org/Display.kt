@@ -1,9 +1,21 @@
 package org.example
 
-class Display {
-    private val frameBuffer = UByteArray(64) // 8x8 display (64 cells)
-    private val dirtyPositions = mutableSetOf<Int>() // track changed indices
+import java.util.concurrent.Executors
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
+
+interface DisplayObserver {
+    fun onFramebufferUpdate(indices: Set<Int>)
+}
+
+class EventDrivenDisplay {
+    private val frameBuffer = UByteArray(64) // 8x8 display
     private var strategy: DisplayStrategy = ConsoleDisplayStrategy()
+    private val observers = mutableSetOf<DisplayObserver>()
+
+    private val dirtyPositions = mutableSetOf<Int>()
 
     fun setDisplayStrategy(strategy: DisplayStrategy) {
         this.strategy = strategy
@@ -11,37 +23,48 @@ class Display {
 
     @OptIn(ExperimentalUnsignedTypes::class)
     fun drawCharacter(row: Int, col: Int, char: UByte) {
-        if (row !in 0..7 || col !in 0..7) {
-            println("[DEBUG] Draw call ignored: Coordinates ($row, $col) are out of bounds.")
-            return
-        }
+        if (row in 0..7 && col in 0..7) {
+            val index = row * 8 + col
+            if (frameBuffer[index] != char) {
+                frameBuffer[index] = char
+                dirtyPositions.add(index)
 
-        val index = row * 8 + col
-        if (frameBuffer[index] != char) {
-            frameBuffer[index] = char
-            dirtyPositions.add(index)
-            notifyDirty()
+                renderChanges()
+            }
         }
     }
 
-    /**
-     * Refresh only the parts of the screen that have changed.
-     */
-    fun refresh() {
+    private fun renderChanges() {
         if (dirtyPositions.isNotEmpty()) {
-            strategy.renderPartial(frameBuffer, dirtyPositions)
+            val updatedPositions = dirtyPositions.toSet()
+            strategy.renderPartial(frameBuffer, updatedPositions)
             dirtyPositions.clear()
+            notifyObservers(updatedPositions)
         }
     }
 
-    // Callback invoked when display becomes dirty
-    private var onDirtyCallback: (() -> Unit)? = null
-
-    fun setOnDirtyCallback(callback: () -> Unit) {
-        onDirtyCallback = callback
+    fun refresh() {
+        renderChanges()
     }
 
-    private fun notifyDirty() {
-        onDirtyCallback?.invoke()
+    fun fullRefresh() {
+        strategy.render(frameBuffer)
+        val allPositions = (0 until 64).toSet()
+        dirtyPositions.clear()
+        notifyObservers(allPositions)
+    }
+
+
+    fun clear() {
+        frameBuffer.fill(0u)
+        dirtyPositions.addAll(0 until 64)
+        renderChanges()
+    }
+
+    private fun notifyObservers(indices: Set<Int>) {
+        for (observer in observers) {
+            observer.onFramebufferUpdate(indices)
+        }
     }
 }
+

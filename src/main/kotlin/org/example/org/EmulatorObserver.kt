@@ -1,4 +1,6 @@
-package org.example.org
+package org.example
 
-class EmulatorObserver {
+
+interface EmulatorObserver {
+    fun onEmulatorEvent(event: EmulatorEvent)
 }

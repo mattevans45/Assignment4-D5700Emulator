@@ -5,14 +5,11 @@ class RomStrategy : IMemoryStrategy {
 
     fun load(data: UByteArray) {
         println("[DEBUG] Loading ${data.size} bytes into ROM.")
-        // Load data starting at address 0x0
         data.copyInto(destination = rom, destinationOffset = 0, startIndex = 0, endIndex = data.size)
     }
 
     override fun readByte(address: UShort): UByte {
         val value = if (address.toInt() < rom.size) rom[address.toInt()] else 0u
-        // Disabling verbose debug logging for cleaner output
-        // println("[DEBUG] Reading from ROM at 0x${address.toString(16).uppercase()}: Value 0x${value.toString(16).uppercase()}")
         return value
     }
 
